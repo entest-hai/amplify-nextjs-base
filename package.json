@@ -12,7 +12,6 @@
     "build": "next build",
     "lint": "next lint",
     "start": "next start",
-     "postbuild": "npx next-sitemap",
     "test": "$_ run build"
 
   },
