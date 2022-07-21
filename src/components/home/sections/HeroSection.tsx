@@ -127,7 +127,7 @@ export const HeroSection = () => {
                 size="large"
                 className="docs-home-cta"
                 as="a"
-                href="#live"
+                href="#"
               >
                 Or try it out
                 <Icon
