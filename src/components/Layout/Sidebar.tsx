@@ -154,7 +154,12 @@ const SecondaryNav = (props) => {
   ]);
 
   return (
-    <Expander type="multiple" value={value} onChange={setValue}>
+    <Expander
+      type="multiple"
+      value={value}
+      onChange={setValue}
+      defaultValue={["getting-started", "sample-applications"]}
+    >
       <ExpanderItem
         title={
           <ExpanderTitle
