@@ -1,34 +1,107 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Setup Amplify NextJS Project 
 
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
+## Create a NextJS project  
+```bash 
+npx create-next-app@latest --typescript
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+add amplify and amplify-ui
+```bash 
+npm i @aws-amplify/ui-react aws-amplify
+```
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+add sass, react-icons, docsearch 
+```bash 
+npm i react-icons @docsearch/react sass 
+```
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+## Project structure 
+```
+|--amplify-nextjs-demo
+|--|--public 
+|--|--|--fonts
+|--|--|--|--Inter-Regular.woff
+|--|--|--svg
+|--|--|--|--grid.svg
+|--|--src
+|--|--|--components 
+|--|--|--|--home
+|--|--|--|--|--HeroSection.tsx
+|--|--|--|--Layout
+|--|--|--|--|--Header.tsx
+|--|--|--|--|--Footer.tsx
+|--|--|--|--|--Sidebar.tsx 
+|--|--|--|--|Logo.tsx
+|--|--|--data 
+|--|--|--|--links.tsx
+|--|--|--pages
+|--|--|--|--_app.tsx
+|--|--|--|--index.tsx
+|--|--|--styles
+|--|--|--|--components
+|--|--|--|--docs
+|--|--|--|--primitives
+|--|--|--|--index.scss
+|--|--|--utils
+|--|--|--theme.ts
+|--|--package.json
+|--|--package-lock.json
+|--|--.prettierrc
+|--|--tsconfig.json
+|--|--next.config.js
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+```
 
-## Learn More
+index page 
+```tsx
+import { HeroSection } from "../components/home/sections/HeroSection";
 
-To learn more about Next.js, take a look at the following resources:
+export default function Home() {
+  return <HeroSection></HeroSection>;
+}
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+_app.tsx setting
+```tsx
+import React from "react";
+import type { AppProps } from "next/app";
+import "./../styles/index.scss";
+import { ThemeProvider } from "@aws-amplify/ui-react";
+import { baseTheme } from "./../theme";
+import { Header } from "../components/Layout/Header";
 
-## Deploy on Vercel
+function MyApp({ Component, pageProps }: AppProps) {
+  const [expanded, setExpanded] = React.useState(false);
+  const [colorMode, setColorMode] = React.useState("dark");
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+  return (
+    <>
+      <div className={"docs-home"}>
+        <ThemeProvider theme={baseTheme} colorMode={colorMode}>
+          <Header
+            expanded={expanded}
+            setExpanded={setExpanded}
+            colorMode={colorMode}
+            setColorMode={setColorMode}
+            platform={"react"}
+          ></Header>
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+          <main className={"docs-main"}>
+            <div
+              className={
+                ("docs-sidebar-spacer",
+                expanded ? "expanded" : "collapsed")
+              }
+            >
+              <Component></Component>
+            </div>
+          </main>
+        </ThemeProvider>
+      </div>
+    </>
+  );
+}
+
+export default MyApp;
+```
