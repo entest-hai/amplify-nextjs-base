@@ -1,0 +1,404 @@
+export const meta = {
+  title: 'Microsoft SQL to Aurora MySQL Migration',
+};
+
+import { MyLayoutTest } from './../../components/Layout/MyLayout';
+
+## Architecture 
+
+<img width="802" alt="SqlServerDmsDiagram" src="https://user-images.githubusercontent.com/20411077/174956389-d62cda7c-2e04-473b-b556-cd187ff7970c.png" />
+
+Reference 
+- [AWS Database Migration Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/77bdff4f-2d9e-4d68-99ba-248ea95b3aca/en-US)
+- [Developer Center](https://aws.amazon.com/getting-started/hands-on/move-to-managed/migrate-sql-server-to-amazon-rds/)
+- [Database Freedom](https://aws.amazon.com/solutions/databasemigrations/database-freedom/)
+
+Customers
+- [IPG Japan TV](https://aws.amazon.com/blogs/database/continuous-database-replication-using-aws-dms-to-migrate-from-oracle-to-amazon-aurora/)
+- [Verison](https://aws.amazon.com/dms/)
+
+When to use? 
+- Migrate to AWS and benefit
+- Modernize applications 
+
+Migration paths 
+- Lift and shift 
+- Replatforming 
+- Refactoring 
+
+Essential concepts
+- [AWS Database Migration Service](https://docs.aws.amazon.com/dms/latest/userguide/Welcome.html)
+- [AWS SCT](https://aws.amazon.com/dms/schema-conversion-tool/)
+
+Best practices 
+- [DMS Re-invent 2019 John Winford 29:30](https://www.youtube.com/watch?v=kJs9U4ys5FE)
+- [AWS Database Migration Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/77bdff4f-2d9e-4d68-99ba-248ea95b3aca/en-US/sqlserver-aurora)
+- [continuous database replication](https://aws.amazon.com/blogs/database/continuous-database-replication-using-aws-dms-to-migrate-from-oracle-to-amazon-aurora/)
+- [Migration and modernization strategies](https://aws.amazon.com/blogs/modernizing-with-aws/migration-modernization-strategies-sql-on-aws/)
+- [need help](https://aws.amazon.com/products/databases/migrations/)
+
+
+## Microsft SQL in an EC2 
+```tsx
+ // security group
+    this.ec2SecurityGrroup = new aws_ec2.SecurityGroup(
+      this,
+      "SecurityGroupForEc2MySql",
+      {
+        securityGroupName: "SecurityGroupForEc2MySql",
+        vpc: vpc,
+      }
+    );
+```
+open port for RDP and db 
+```tsx
+this.ec2SecurityGrroup.addIngressRule(
+      // RDP access
+      aws_ec2.Peer.anyIpv4(),
+      aws_ec2.Port.tcp(1521)
+    );
+
+    this.ec2SecurityGrroup.addIngressRule(
+      // RDP access
+      aws_ec2.Peer.anyIpv4(),
+      aws_ec2.Port.tcp(3389)
+    );
+
+    this.ec2SecurityGrroup.addIngressRule(
+      // sql server access
+      aws_ec2.Peer.anyIpv4(),
+      aws_ec2.Port.tcp(1433)
+    );
+```
+role for ec2
+```tsx
+// role for ec2
+    const role = new aws_iam.Role(this, "RoleForEc2DbMigrationDemo", {
+      roleName: "RoleForEc2DbMigrationDemo",
+      assumedBy: new aws_iam.ServicePrincipal("ec2.amazonaws.com"),
+    });
+
+    role.addManagedPolicy(
+      aws_iam.ManagedPolicy.fromAwsManagedPolicyName(
+        "AmazonSSMManagedInstanceCore"
+      )
+    );
+
+    role.addManagedPolicy(
+      aws_iam.ManagedPolicy.fromAwsManagedPolicyName(
+        "AWSCloudFormationReadOnlyAccess"
+      )
+    );
+
+    role.attachInlinePolicy(
+      new aws_iam.Policy(this, "PolicyForEc2DbMigrationDemo", {
+        policyName: "PolicyForEc2DbMigrationDemo",
+        statements: [
+          new aws_iam.PolicyStatement({
+            effect: aws_iam.Effect.ALLOW,
+            actions: ["secretsmanager:GetSecretValue"],
+            resources: ["arn:aws:secretsmanager:*"],
+          }),
+        ],
+      })
+    );
+```
+ec2 hosting Microsoft SQL by an AMI
+```tsx
+// ec2 host MySQL
+    this.ec2 = new aws_ec2.Instance(this, "Ec2HostMySQLDemo", {
+      instanceName: "Ec2HostMySqlDemo",
+      keyName: props.keyPair,
+      instanceType: aws_ec2.InstanceType.of(
+        aws_ec2.InstanceClass.M5,
+        aws_ec2.InstanceSize.LARGE
+      ),
+      blockDevices: [
+        {
+          deviceName: "/dev/sda1",
+          volume: aws_ec2.BlockDeviceVolume.ebs(250, {
+            deleteOnTermination: true,
+            iops: 2000,
+            volumeType: aws_ec2.EbsDeviceVolumeType.IO1,
+          }),
+        },
+      ],
+      machineImage: aws_ec2.MachineImage.genericWindows({
+        "ap-southeast-1": props.amiImage,
+      }),
+      vpc: vpc,
+      role: role,
+      securityGroup: this.ec2SecurityGrroup,
+      vpcSubnets: {
+        subnetType: aws_ec2.SubnetType.PUBLIC,
+      },
+    });
+```
+
+## Aurora MySQL target 
+db security group 
+```tsx
+ // db security group
+    this.dbSecurityGroup = new aws_ec2.SecurityGroup(
+      this,
+      "SecurityGroupForDb",
+      {
+        securityGroupName: "SecurityGroupForDb",
+        vpc: vpc,
+      }
+    );
+
+    this.dbSecurityGroup.addIngressRule(
+      aws_ec2.Peer.securityGroupId(this.ec2SecurityGrroup.securityGroupId),
+      aws_ec2.Port.tcp(3306)
+    );
+```
+db subnet group 
+```tsx
+ // subnet group for aurora
+    const subnetGroup = new aws_rds.SubnetGroup(this, "AuroraSubnetGroup", {
+      vpc: vpc,
+      removalPolicy: RemovalPolicy.DESTROY,
+      description: "subnet group for aurora clsuter",
+      subnetGroupName: "AuroraSubnetGroup",
+      vpcSubnets: {
+        subnetType: aws_ec2.SubnetType.PRIVATE_WITH_NAT,
+      },
+    });
+```
+
+aurora cluster 
+```tsx
+// amazon qurora mysql
+    this.aurora = new aws_rds.DatabaseCluster(this, "AuroraCluster", {
+      removalPolicy: RemovalPolicy.DESTROY,
+      defaultDatabaseName: props.dbName,
+      clusterIdentifier: "AuroraClusterDemo",
+      engine: aws_rds.DatabaseClusterEngine.auroraMysql({
+        version: aws_rds.AuroraMysqlEngineVersion.VER_2_08_1,
+      }),
+      // production: secrete manager
+      credentials: {
+        username: "admin",
+        password: SecretValue.unsafePlainText("Password1"),
+      },
+      instanceProps: {
+        instanceType: aws_ec2.InstanceType.of(
+          aws_ec2.InstanceClass.BURSTABLE2,
+          aws_ec2.InstanceSize.SMALL
+        ),
+        vpcSubnets: {
+          subnets: vpc.privateSubnets.map((subnet) => subnet),
+        },
+        vpc: vpc,
+        securityGroups: [this.dbSecurityGroup],
+      },
+      deletionProtection: false,
+      instances: 1,
+      subnetGroup: subnetGroup,
+    });
+```
+
+## DMS role 
+```tsx
+export class DmsVpcRole extends Stack {
+  public readonly role: aws_iam.Role;
+
+  constructor(scope: Construct, id: string, props: StackProps) {
+    super(scope, id, props);
+
+    this.role = new aws_iam.Role(this, "DmsVpcRole", {
+      roleName: "dms-vpc-role",
+      assumedBy: new aws_iam.ServicePrincipal("dms.amazonaws.com"),
+    });
+
+    this.role.addManagedPolicy(
+      aws_iam.ManagedPolicy.fromManagedPolicyArn(
+        this,
+        "AmazonDMSVPCManagementRole",
+        "arn:aws:iam::aws:policy/service-role/AmazonDMSVPCManagementRole"
+      )
+    );
+
+    new CfnOutput(this, "TheDmsVpcRole", {
+      value: this.role.roleArn,
+    });
+  }
+}
+```
+## SCT and schema conversion [HERE](https://catalog.us-east-1.prod.workshops.aws/workshops/77bdff4f-2d9e-4d68-99ba-248ea95b3aca/en-US/sqlserver-aurora/schema-conversion/convert)
+- Install the AWS SCT 
+
+- Check 
+
+- Create a DB migration project.
+
+- Connect to source database - mycrosoft - 1433 - dms_sample table 
+
+- Review the migration assessment report 
+
+- Connect to target database - arurora - primary endponit - 3306
+
+- Assert report view - action items - see issues 
+
+- Modify the procedural code - action items - generateTransferAcvitity 
+```sql 
+PRINT (concat('max t: ',@max_tik_id,' min t: ', @min_tik_id, 'max p: ',@max_p_id,' min p: ', @min_p_id));
+```
+by this in 3 occurencs 
+```sql 
+--first 2 use line below
+SELECT concat('max t: ',@max_tik_id,' min t: ', @min_tik_id, 'max p: ',@max_p_id,' min p: ', @min_p_id); 
+--third one use 
+SELECT ('Sorry, no tickets are available for transfer.');
+```
+
+- apply to database dms_sample_dbo schema 
+
+
+## DMS replication instance and endpoints  
+get existed vpc 
+```tsx
+// get existed vpc
+    const vpc = aws_ec2.Vpc.fromLookup(this, "Vpc", {
+      vpcId: props.vpcId,
+      vpcName: props.vpcName,
+    });
+```
+dms subnet group 
+```tsx
+  // dms subnet group
+    const dmSubnet = new aws_dms.CfnReplicationSubnetGroup(
+      this,
+      "SubnetGroupForDms",
+      {
+        replicationSubnetGroupDescription: "subnet group for replication demo",
+        subnetIds: vpc.privateSubnets.map((subnet) => subnet.subnetId),
+        replicationSubnetGroupIdentifier: "SubnetGroupForDmsId",
+      }
+    );
+```
+replication instance 
+```tsx
+// dms database migration service
+    const remplicationIstance = new aws_dms.CfnReplicationInstance(
+      this,
+      "ReplicationInstanceDemo",
+      {
+        replicationInstanceClass: "dms.t2.medium",
+        allocatedStorage: 256,
+        engineVersion: "3.4.6",
+        multiAz: false,
+        publiclyAccessible: false,
+        resourceIdentifier: "ReplicationInstanceDemo",
+        vpcSecurityGroupIds: [
+          props.dbStack.dbSecurityGroup.securityGroupId,
+          props.dbStack.ec2SecurityGrroup.securityGroupId,
+        ],
+        availabilityZone: "ap-southeast-1a",
+        replicationSubnetGroupIdentifier:
+          dmSubnet.replicationSubnetGroupIdentifier!.toLowerCase(),
+      }
+    );
+    remplicationIstance.addDependsOn(dmSubnet);
+
+target endpoints 
+```tsx
+// dms target endpoints
+    const targetEndpoint = new aws_dms.CfnEndpoint(
+      this,
+      "DmsTargetEndpointAuroraMySql",
+      {
+        endpointType: "target",
+        endpointIdentifier: "targetEndpointId",
+        engineName: "aurora",
+        // default dbname aurora mysql
+        // databaseName: "tempdb",
+        serverName: props.dbStack.aurora.clusterEndpoint.hostname,
+        port: 3306,
+        username: "admin",
+        // default non
+        sslMode: "none",
+        // production => secret manager
+        password: "Password1",
+        mySqlSettings: {},
+      }
+    );
+```
+source endpoint 
+```tsx
+ // dms source endpoint
+    const sourceEndpoint = new aws_dms.CfnEndpoint(
+      this,
+      "DmsSourceEndpointRdsSqlServerEc2",
+      {
+        endpointType: "source",
+        endpointIdentifier: "sourceEndpointId",
+        engineName: "sqlserver",
+        databaseName: "dms_sample",
+        serverName: props.dbStack.ec2.instancePublicDnsName,
+        port: 1433,
+        username: "awssct",
+        password: "Password1",
+        sslMode: "none",
+      }
+    );
+```
+
+replication task with rules
+```tsx
+ // dms replication task
+    const replicationSelectTablesTask = new aws_dms.CfnReplicationTask(
+      this,
+      "DmsReplicationTaskSelectDemo",
+      {
+        // full-load, cdc, full-load-and-cdc
+        migrationType: "full-load",
+        // replication instance ref indicates its arn
+        replicationInstanceArn: remplicationIstance.ref,
+        sourceEndpointArn: sourceEndpoint.ref,
+        tableMappings: JSON.stringify({
+          rules: [
+            {
+              "rule-type": "selection",
+              "rule-id": "200548593",
+              "rule-name": "200548593",
+              "object-locator": {
+                "schema-name": "dbo",
+                "table-name": "player",
+              },
+              "rule-action": "include",
+              filters: [],
+            },
+            {
+              "rule-type": "transformation",
+              "rule-id": "876674182",
+              "rule-name": "876674182",
+              "rule-target": "schema",
+              "object-locator": {
+                "schema-name": "dbo"
+              },
+              "rule-action": "rename",
+              "value": "dms_sample_dbo",
+              "old-value": null
+            }
+          ],
+        }),
+        targetEndpointArn: targetEndpoint.ref,
+      }
+    );
+```
+
+## Check results 
+
+![Screen Shot 2022-06-22 at 13 03 13](https://user-images.githubusercontent.com/20411077/174956529-6987b55d-2157-42d9-a2f3-d52962728c2d.png)
+
+![Screen Shot 2022-06-22 at 13 12 12](https://user-images.githubusercontent.com/20411077/174956509-c7344bbc-489c-456c-8887-d160d77299cc.png)
+
+![Screen Shot 2022-06-22 at 13 12 43](https://user-images.githubusercontent.com/20411077/174956483-621f8528-5be4-42e3-8a1d-3e7ca1f77eb8.png)
+
+
+
+export default ({ children }) => (
+  <MyLayoutTest frontmatter={meta}>{children}</MyLayoutTest>
+);

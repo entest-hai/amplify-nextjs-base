@@ -1,0 +1,115 @@
+export const meta = {
+  title: 'WAF and CloudFront Denfense Your Page',
+};
+
+import { MyLayoutTest } from './../../components/Layout/MyLayout';
+
+## Summary
+
+What use cases?
+
+- Protect a web by Geo restriction
+- Protect a web from anomaly IP requests
+- Protect a web from bad IPs
+
+## Architecture
+
+![aws_devops-ica drawio (2)](https://user-images.githubusercontent.com/20411077/169648439-8c6a0bb1-f71c-4e65-93d3-afc923172ebf.png)
+
+## CDK Stack
+
+1. AWSManagedRulesCommonRuleSet block bad IPs
+
+```tsx
+const awsMangedRuleIPReputationList: aws_wafv2.CfnWebACL.RuleProperty = {
+  name: 'AWSManagedRulesCommonRuleSet',
+  priority: 10,
+  statement: {
+    managedRuleGroupStatement: {
+      name: 'AWSManagedRulesCommonRuleSet',
+      vendorName: 'AWS',
+    },
+  },
+  overrideAction: { none: {} },
+  visibilityConfig: {
+    sampledRequestsEnabled: true,
+    cloudWatchMetricsEnabled: true,
+    metricName: 'AWSIPReputationList',
+  },
+};
+```
+
+2. Geo restriction
+
+```tsx
+const ruleGeoRestrict: aws_wafv2.CfnWebACL.RuleProperty = {
+  name: 'RuleGeoRestrict',
+  priority: 2,
+  action: {
+    block: {},
+  },
+  statement: {
+    geoMatchStatement: {
+      countryCodes: ['US'],
+    },
+  },
+  visibilityConfig: {
+    sampledRequestsEnabled: true,
+    cloudWatchMetricsEnabled: true,
+    metricName: 'GeoMatch',
+  },
+};
+```
+
+3. Block anomaly request by a threshold
+
+```tsx
+const ruleLimiteRequests100: aws_wafv2.CfnWebACL.RuleProperty = {
+  name: 'LimiteRequests100',
+  priority: 1,
+  action: {
+    block: {},
+  },
+  statement: {
+    rateBasedStatement: {
+      limit: 100,
+      aggregateKeyType: 'IP',
+    },
+  },
+  visibilityConfig: {
+    sampledRequestsEnabled: true,
+    cloudWatchMetricsEnabled: true,
+    metricName: 'LimitRequests100',
+  },
+};
+```
+
+4. Create WAF ACL
+
+```tsx
+const webAcl = new aws_wafv2.CfnWebACL(this, 'WafCloudFrontProtectIcaDemo', {
+  defaultAction: { allow: {} },
+  scope: 'CLOUDFRONT',
+  visibilityConfig: {
+    cloudWatchMetricsEnabled: true,
+    metricName: 'waf-cloudfront',
+    sampledRequestsEnabled: true,
+  },
+  description: 'WAFv2 ACL for CloudFront',
+  name: 'WafCloudFrontProtectIcaDemo',
+  rules: [
+    awsMangedRuleIPReputationList,
+    ruleLimiteRequests100,
+    ruleGeoRestrict,
+  ],
+});
+```
+
+## Reference
+
+- [CDK WAF](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_wafv2.CfnWebACL.html)
+- [AWS WAF Dev Doc](https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html)
+
+export default ({ children }) => (
+  <MyLayoutTest frontmatter={meta}>{children}</MyLayoutTest>
+);

@@ -26,11 +26,11 @@ import {
   theming,
   gettingStarted,
   primitiveComponents,
-} from "../../data/links";
+  cdkComponents,
+} from "./../../data/links";
 
 import Link from "next/link";
 import { useCustomRouter } from "./../useCustomRouter";
-// import { FrameworkChooser } from './FrameworkChooser';
 import { LogoLink } from "./LogoLink";
 import { MenuButton } from "./MenuButton";
 
@@ -76,7 +76,7 @@ const NavLink = ({
   }
 
   return (
-    <Link href={`/${platform}${href}`} passHref>
+    <Link href={`/${href}`} passHref>
       <a onClick={onClick} className={classNames}>
         {children}
       </a>
@@ -170,7 +170,42 @@ const SecondaryNav = (props) => {
           </NavLink>
         ))}
       </ExpanderItem>
-      {platform === "react" ? (
+
+      {platform === "entest" ? (
+        <ExpanderItem
+          title={
+            <ExpanderTitle
+              Icon={MdOutlineChecklist}
+              text="Basic Constructs"
+            />
+          }
+          value="basic-constructs"
+        >
+          {cdkComponents.map(({ label, ...rest }) => (
+            <NavLink key={label} {...rest} onClick={props.onClick}>
+              {label}
+            </NavLink>
+          ))}
+        </ExpanderItem>
+      ) : null}
+
+      <ExpanderItem
+        title={
+          <ExpanderTitle
+            Icon={MdOutlineChecklist}
+            text="Sample Applications"
+          />
+        }
+        value="sample-applications"
+      >
+        {cdkComponents.map(({ label, ...rest }) => (
+          <NavLink key={label} {...rest} onClick={props.onClick}>
+            {label}
+          </NavLink>
+        ))}
+      </ExpanderItem>
+
+      {platform === "entest" ? (
         <ExpanderItem
           title={
             <ExpanderTitle
@@ -191,24 +226,26 @@ const SecondaryNav = (props) => {
         </ExpanderItem>
       ) : null}
 
-      <ExpanderItem
-        title={
-          <ExpanderTitle
-            Icon={MdOutlinePower}
-            text="Connected components"
-          />
-        }
-        value="connected-components"
-      >
-        {connectedComponents.map(({ label, ...rest }) => (
-          <NavLink key={label} {...rest} onClick={props.onClick}>
-            {label}
-          </NavLink>
-        ))}
-      </ExpanderItem>
+      {platform === "entest" ? (
+        <ExpanderItem
+          title={
+            <ExpanderTitle
+              Icon={MdOutlinePower}
+              text="Connected components"
+            />
+          }
+          value="connected-components"
+        >
+          {connectedComponents.map(({ label, ...rest }) => (
+            <NavLink key={label} {...rest} onClick={props.onClick}>
+              {label}
+            </NavLink>
+          ))}
+        </ExpanderItem>
+      ) : null}
 
       {/* Flutter doesn't have legacy components */}
-      {platform === "flutter" ? null : (
+      {platform === "entest" ? (
         <ExpanderItem
           title={
             <ExpanderTitle
@@ -224,32 +261,40 @@ const SecondaryNav = (props) => {
             </NavLink>
           ))}
         </ExpanderItem>
-      )}
+      ) : null}
 
-      <ExpanderItem
-        title={
-          <ExpanderTitle Icon={MdOutlineAutoAwesome} text="Theming" />
-        }
-        value="theming"
-      >
-        {theming.map(({ label, ...rest }) => (
-          <NavLink key={label} {...rest} onClick={props.onClick}>
-            {label}
-          </NavLink>
-        ))}
-      </ExpanderItem>
-      <ExpanderItem
-        title={
-          <ExpanderTitle Icon={MdOutlineArticle} text="Guides" />
-        }
-        value="guides"
-      >
-        {guides.map(({ label, ...rest }) => (
-          <NavLink {...rest} key={label} onClick={props.onClick}>
-            {label}
-          </NavLink>
-        ))}
-      </ExpanderItem>
+      {platform === "entest" ? (
+        <ExpanderItem
+          title={
+            <ExpanderTitle
+              Icon={MdOutlineAutoAwesome}
+              text="Theming"
+            />
+          }
+          value="theming"
+        >
+          {theming.map(({ label, ...rest }) => (
+            <NavLink key={label} {...rest} onClick={props.onClick}>
+              {label}
+            </NavLink>
+          ))}
+        </ExpanderItem>
+      ) : null}
+
+      {platform === "entest" ? (
+        <ExpanderItem
+          title={
+            <ExpanderTitle Icon={MdOutlineArticle} text="Guides" />
+          }
+          value="guides"
+        >
+          {guides.map(({ label, ...rest }) => (
+            <NavLink {...rest} key={label} onClick={props.onClick}>
+              {label}
+            </NavLink>
+          ))}
+        </ExpanderItem>
+      ) : null}
     </Expander>
   );
 };
@@ -285,9 +330,12 @@ export const Sidebar = ({ expanded, setExpanded, platform }) => {
 
           <Divider size="small" />
 
-          <ALink href="https://docs.amplify.aws" isExternal>
+          <ALink
+            href="https://docs.aws.amazon.com/cdk/api/v2/"
+            isExternal
+          >
             <Flex as="span" direction="row" alignItems="center">
-              Amplify Docs
+              CDK Docs
               <MdOpenInNew />
             </Flex>
           </ALink>

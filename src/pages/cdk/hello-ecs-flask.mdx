@@ -1,0 +1,221 @@
+export const meta = {
+  title: 'Hello AWS ECS with a Flask Web App',
+};
+
+import { MyLayoutTest } from './../../components/Layout/MyLayout';
+
+![aws_devops-ecs drawio](https://user-images.githubusercontent.com/20411077/179500956-425bfa52-b434-46b3-a7f0-0d9914eb8dce.png)
+
+## Create an ECS Cluster
+
+```tsx
+// ecs cluster
+const cluster = new aws_ecs.Cluster(this, 'EcsClusterFlaskApp', {
+  vpc: vpc,
+  clusterName: 'EcsClusterFlaskApp',
+  containerInsights: true,
+  enableFargateCapacityProviders: true,
+});
+```
+
+## Create an ECS Task Definition
+
+```tsx
+// ecs task definition
+const task = new aws_ecs.FargateTaskDefinition(this, 'FlaskTaskDefinition', {
+  family: 'latest',
+  cpu: 2048,
+  memoryLimitMiB: 4096,
+  runtimePlatform: {
+    operatingSystemFamily: aws_ecs.OperatingSystemFamily.LINUX,
+    cpuArchitecture: aws_ecs.CpuArchitecture.X86_64,
+  },
+});
+```
+
+## Create an ECS Container
+
+```tsx
+// container
+const container = task.addContainer('FlaskAppContainer', {
+  containerName: 'FlaskAppContainer',
+  memoryLimitMiB: 4096,
+  memoryReservationMiB: 4096,
+  stopTimeout: Duration.seconds(120),
+  startTimeout: Duration.seconds(120),
+  environment: {
+    FHR_ENV: 'DEPLOY',
+  },
+  image: aws_ecs.ContainerImage.fromEcrRepository(
+    aws_ecr.Repository.fromRepositoryName(
+      this,
+      'FlaskAppRepository',
+      'flask-app-demo'
+    )
+  ),
+  portMappings: [{ containerPort: 8080 }],
+});
+```
+
+## Create a ECS Service
+
+```tsx
+// service
+const service = new aws_ecs.FargateService(this, 'FlaskService', {
+  vpcSubnets: {
+    subnetType: aws_ec2.SubnetType.PUBLIC,
+  },
+  assignPublicIp: true,
+  cluster: cluster,
+  taskDefinition: task,
+  desiredCount: 2,
+  capacityProviderStrategies: [
+    {
+      capacityProvider: 'FARGATE',
+      weight: 1,
+    },
+    {
+      capacityProvider: 'FARGATE_SPOT',
+      weight: 0,
+    },
+  ],
+});
+```
+
+### Add an Application Load Balancer
+
+```tsx
+// application load balancer
+const alb = new aws_elasticloadbalancingv2.ApplicationLoadBalancer(
+  this,
+  'AlbForEcs',
+  {
+    loadBalancerName: 'AlbForEcsDemo',
+    vpc: vpc,
+    internetFacing: true,
+  }
+);
+
+// add listener
+const listener = alb.addListener('Listener', {
+  port: 80,
+  open: true,
+  protocol: aws_elasticloadbalancingv2.ApplicationProtocol.HTTP,
+});
+
+// add target
+listener.addTargets('EcsService', {
+  port: 8080,
+  targets: [
+    service.loadBalancerTarget({
+      containerName: 'FlaskAppContainer',
+      containerPort: 8080,
+      protocol: aws_ecs.Protocol.TCP,
+    }),
+  ],
+  healthCheck: {
+    timeout: Duration.seconds(10),
+  },
+});
+```
+
+scaling
+
+```tsx
+// scaling on cpu utilization
+const scaling = service.autoScaleTaskCount({
+  maxCapacity: 4,
+  minCapacity: 1,
+});
+
+scaling.scaleOnMemoryUtilization('CpuUtilization', {
+  targetUtilizationPercent: 50,
+});
+```
+
+## Docker file
+
+```bash
+FROM python:3.7-slim
+
+COPY . /app
+
+WORKDIR /app
+
+RUN pip install -r requirements.txt
+
+COPY . /app
+
+EXPOSE 8080
+
+ENTRYPOINT [ "python" ]
+
+CMD [ "app.py" ]
+
+```
+
+## Some Docker Commands
+
+```bash
+docker build -t flask-app .
+```
+
+and run
+
+```bash
+docker run -d -p 3000:3000 flask-app:latest
+```
+
+list docker running
+
+```bash
+docker ps
+```
+
+stop all running containers
+
+```bash
+docker kill $(docker ps -q)
+```
+
+delete all docker images
+
+```
+docker system prune -a
+```
+
+docker ecr log in
+
+```bash
+aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin ACCOUNT_ID.dkr.ecr.ap-southeast-1.amazonaws.com
+```
+
+tag
+
+```bash
+sudo docker tag b3bab24448e4 ACCOUNT_ID.dkr.ecr.ap-southeast-1.amazonaws.com/flask-app-demo:latest
+```
+
+push
+
+```bash
+sudo docker push ACCOUNT_ID.dkr.ecr.ap-southeast-1.amazonaws.com/flask-app-demo:latest
+```
+
+## Troubleshooting
+
+```bash
+#! /bin/bash
+cluster=clustername
+capacityprovider=capacityprovidername
+services=$(aws ecs list-services --cluster ${cluster} | jq --raw-output '.serviceArns[]')
+aws ecs describe-services \
+    --cluster ${cluster} \
+    --services ${services} \
+    | jq -r --arg capacityprovider "${capacityprovider}" \
+    '.services[] | select(.capacityProviderStrategy[]?.capacityProvider == $capacityprovider) | .serviceName'
+```
+
+export default ({ children }) => (
+  <MyLayoutTest frontmatter={meta}>{children}</MyLayoutTest>
+);

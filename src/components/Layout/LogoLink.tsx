@@ -11,7 +11,7 @@ interface LogoLinkProps {
 
 export const LogoLink = ({ platform, onClick }: LogoLinkProps) => {
   return (
-    <Link href={`/${platform}`} passHref>
+    <Link href={`/`} passHref>
       <a onClick={onClick} className="docs-logo-link">
         <VisuallyHidden>Amplify UI Home</VisuallyHidden>
         <Logo />
