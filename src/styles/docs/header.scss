@@ -1,0 +1,143 @@
+@import './variables';
+
+@keyframes showLogo {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.docs-header {
+  display: flex;
+  position: sticky;
+  top: 0;
+  width: 100%;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding-block: var(--amplify-space-small);
+  padding-inline: var(--docs-horizontal-padding);
+  z-index: 100;
+  backdrop-filter: blur(10px);
+  gap: var(--amplify-space-small);
+
+  @media (max-width: $breakpoint-large) {
+    border-bottom: var(--amplify-borders-secondary);
+    box-shadow: var(--amplify-shadows-small);
+
+    .color-switcher .amplify-button {
+      padding-inline: var(--amplify-space-relative-xxs);
+    }
+  }
+
+  transition: all var(--amplify-time-medium) ease;
+  
+  .docs-home & {
+    backdrop-filter: none;
+  }
+  
+  .scrolled .docs-home & {
+    border-bottom: var(--amplify-borders-secondary);
+    box-shadow: var(--amplify-shadows-small);
+    backdrop-filter: blur(10px);
+  }
+  
+  &::before {
+    content: '';
+    z-index: -1;
+    background-color: var(--amplify-colors-background-primary);
+    opacity: 0.75;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    transition: all var(--amplify-time-medium) ease;
+    
+    .docs-home & {
+      background-color: transparent;
+    }
+    
+    .scrolled .docs-home & {
+      background-color: var(--amplify-colors-background-primary);
+    }
+  }
+}
+
+.docs-header > .docs-logo-link,
+.docs-header .docs-logo-framework {
+  display: inline-flex;
+
+  .docs-home & {
+    opacity: 0;
+    display: none;
+  }
+  
+  .scrolled .docs-home & {
+    display: inline-flex;
+    animation: showOverlay var(--amplify-time-long) forwards;
+  }
+  
+  @media (min-width: $breakpoint-large) {
+    display: none;
+  }
+}
+
+.docs-logo-framework {
+  margin-inline-start: calc(-1 * var(--amplify-space-xs));
+}
+
+
+// The same menu button is used in the sidebar and header
+// we want to hide it in certain scenarios so it can't be tabbed to
+.docs-header-menu-button {
+  border: none;
+  
+  @media (min-width: $breakpoint-large) {
+    display: none;
+    .docs-home & {
+      display: inline-flex;
+    }
+  }
+
+  &.close {
+    .docs-header > & {
+      display: none;
+    }
+  }
+
+  &.open {
+    .docs-sidebar & {
+      display: none;
+    }
+  }
+}
+
+.docs-logo-svg {
+  height: var(--amplify-font-sizes-large);
+  display: inline-block;
+  vertical-align: middle;
+  position: relative;
+  // because the logo is text in the SVG with descenders (p,y),
+  // this is to make the baseline of the logo text line up
+  top: 0.125rem;
+}
+
+.docs-logo-link:hover {
+  --amplify-colors-font-primary: var(--amplify-colors-brand-primary-60);
+}
+
+.docs-logo-link:active {
+  --amplify-colors-font-primary: var(--amplify-colors-brand-primary-80);
+}
+
+.docs-logo-link path {
+  transition: all var(--amplify-time-short) ease;
+}
+
+.docs-header-icon {
+  width: 1rem;
+  height: 1rem;
+}

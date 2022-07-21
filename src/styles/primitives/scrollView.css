@@ -1,0 +1,6 @@
+.my-scrollview {
+  height: 100px;
+  width: 200px;
+  padding: var(--amplify-space-medium);
+  background-color: var(--amplify-colors-blue-10);
+}
