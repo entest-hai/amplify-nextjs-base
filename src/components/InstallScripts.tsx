@@ -1,6 +1,6 @@
 import { CopyButton } from "./CopyButton";
 import { Tabs, TabItem } from "@aws-amplify/ui-react";
-import { useCustomRouter } from "./useCustomRouter";
+// import { useCustomRouter } from "./useCustomRouter";
 
 type WebFramework = "react" | "vue" | "angular";
 type PackageManager = "npm" | "yarn";
@@ -48,9 +48,12 @@ export const InstallScripts = ({
   framework,
 }: InstallScriptsProps) => {
   if (!framework) {
-    const {
-      query: { platform = "react" },
-    } = useCustomRouter();
+    // const {
+    //   query: { platform = "react" },
+    // } = useCustomRouter();
+
+    const platform = "react";
+
     framework = platform as WebFramework;
   }
   return (
