@@ -12,18 +12,19 @@ import { FRAMEWORKS } from "./../data/frameworks";
 
 export const useCustomRouter = () => {
   const router = useRouter();
-  const {
-    query: { platform = "react" },
-    push,
-  } = router;
 
-  React.useEffect(() => {
-    if (!FRAMEWORKS.includes(platform.toString())) {
-      push("/404");
-    }
-  }, [platform]);
+  // const {
+  //   query: { platform = "react" },
+  //   push,
+  // } = router;
 
-  router.query.platform = platform;
+  // React.useEffect(() => {
+  //   if (!FRAMEWORKS.includes(platform.toString())) {
+  //     push("/404");
+  //   }
+  // }, [platform]);
+
+  // router.query.platform = platform;
 
   return router;
 };
